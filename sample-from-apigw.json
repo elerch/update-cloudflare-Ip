@@ -1,0 +1,48 @@
+{
+    "body-json": {},
+    "params": {
+        "path": {
+            "host": "yomama"
+        },
+        "querystring": {},
+        "header": {
+            "Accept": "*/*",
+            "Authorization": "basic notthistime",
+            "CloudFront-Forwarded-Proto": "https",
+            "CloudFront-Is-Desktop-Viewer": "true",
+            "CloudFront-Is-Mobile-Viewer": "false",
+            "CloudFront-Is-SmartTV-Viewer": "false",
+            "CloudFront-Is-Tablet-Viewer": "false",
+            "CloudFront-Viewer-Country": "US",
+            "Host": "ydbaodzwa5.execute-api.us-west-2.amazonaws.com",
+            "User-Agent": "curl/7.43.0",
+            "Via": "1.1 b9a8ce441329f20cea895e08f19f1ec8.cloudfront.net (CloudFront)",
+            "X-Amz-Cf-Id": "QtbPIAIIxhT3fS9mw4kiVleJQhgWeHQ4TWP4BcjAqNA6-tQBiuxywg==",
+            "The-One-You-Want-Below": "54.239.134.108",
+            "X-Forwarded-For": "204.246.162.38, 54.239.134.108",
+            "X-Forwarded-Port": "443",
+            "X-Forwarded-Proto": "https"
+        }
+    },
+    "stage-variables": {},
+    "context": {
+        "account-id": "",
+        "api-id": "ydbaodzwa5",
+        "api-key": "",
+        "authorizer-principal-id": "lobo",
+        "caller": "",
+        "cognito-authentication-provider": "",
+        "cognito-authentication-type": "",
+        "cognito-identity-id": "",
+        "cognito-identity-pool-id": "",
+        "http-method": "GET",
+        "stage": "prod",
+        "source-ip": "204.246.162.38",
+        "user": "",
+        "user-agent": "curl/7.43.0",
+        "user-arn": "",
+        "request-id": "4877bda2-d39a-11e6-b8c4-1d1e65a0a44f",
+        "resource-id": "y1gstv",
+        "resource-path": "/{host}"
+    }
+}
