@@ -1,0 +1,163 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  Bucket:
+    Type: String
+    Default: emil
+    Description: Bucket name holding source code for lambda functions
+  AuthorizerKey:
+    Type: String
+    Default: authorizer.zip
+    Description: Object key for authorizer code
+  UpdaterKey:
+    Type: String
+    Default: updater.zip
+    Description: Object key for updater code
+  BasicAuthUsername:
+    Type: String
+    Description: Username for basic authentication
+  BasicAuthPassword:
+    Type: String
+    Description: Password for basic authentication
+  CloudFlareAuthorizationEmail:
+    Type: String
+    Description: Authorization email (login email address) for cloudflare
+  CloudFlareAuthorizationKey:
+    Type: String
+    Description: Authorization key for CloudFlare - find on account page
+  CloudFlareZoneId:
+    Type: String
+    Description: ZoneId for zone to control - find on domain page
+Resources:
+  BasicExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: '/'
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+  IPUpdater:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: api-gw.handler
+      Runtime: nodejs4.3
+      Role: !GetAtt BasicExecutionRole.Arn
+      Description: Lambda function to update IP addresses
+      Code:
+        S3Bucket: !Ref Bucket
+        S3Key: !Ref UpdaterKey
+      Environment:
+        Variables:
+          CF_AUTH_EMAIL: !Ref CloudFlareAuthorizationEmail
+          CF_AUTH_KEY: !Ref CloudFlareAuthorizationKey
+          CF_ZONE_ID: !Ref CloudFlareZoneId 
+  IPUpdaterInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt IPUpdater.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      #      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${Gateway}/prod/*/*
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${Gateway}/*"
+  Authorizer:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: authenticate.authenticate
+      Role: !GetAtt BasicExecutionRole.Arn
+      Description: Lambda function to update IP addresses
+      Runtime: nodejs4.3
+      Code:
+        S3Bucket: !Ref Bucket
+        S3Key: !Ref AuthorizerKey
+      Environment:
+        Variables:
+          AUTH_USER: !Ref BasicAuthUsername
+          AUTH_PASS: !Ref BasicAuthPassword
+  AuthorizerInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt Authorizer.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      #      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${Gateway}/prod/*/*
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${Gateway}/authorizers/*"
+  Gateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Description: API Gateway for IP Updater
+      Body: !Sub 
+        - |
+          swagger: "2.0"
+          info:
+            version: "2017-01-06T19:41:11Z"
+            title: "UpdateIP"
+          host: "ydbaodzwa5.execute-api.us-west-2.amazonaws.com"
+          basePath: "/"
+          schemes:
+          - "https"
+          paths:
+            /{host}:
+              get:
+                consumes:
+                - "application/json"
+                produces:
+                - "application/json"
+                parameters:
+                - name: "host"
+                  in: "path"
+                  required: true
+                  type: "string"
+                responses:
+                  200:
+                    description: "200 response"
+                    schema:
+                      $ref: "#/definitions/Empty"
+                security:
+                - ${Authorizer}: []
+                x-amazon-apigateway-integration:
+                  responses:
+                    default:
+                      statusCode: "200"
+                  requestTemplates:
+                    application/json: "#set($allParams = $input.params())\n{\n\"params\" : {\n\
+                      #foreach($type in $allParams.keySet())\n    #set($params = $allParams.get($type))\n\
+                      \"$type\" : {\n    #foreach($paramName in $params.keySet())\n    \"$paramName\"\
+                      \ : \"$util.escapeJavaScript($params.get($paramName))\"\n        #if($foreach.hasNext),#end\n\
+                      \    #end\n}\n    #if($foreach.hasNext),#end\n#end\n},\n\"context\" :\
+                      \ {\n    \"source-ip\" : \"$context.identity.sourceIp\"\n    }\n}\n"
+                  uri: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${IPUpdater}/invocations"
+                  passthroughBehavior: "when_no_templates"
+                  httpMethod: "POST"
+                  contentHandling: "CONVERT_TO_TEXT"
+                  type: "aws"
+          securityDefinitions:
+            ${Authorizer}:
+              type: "apiKey"
+              name: "Authorization"
+              in: "header"
+              x-amazon-apigateway-authtype: "custom"
+              x-amazon-apigateway-authorizer:
+                authorizerResultTtlInSeconds: 300
+                authorizerUri: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${Authorizer}/invocations"
+                type: "token"
+          definitions:
+            Empty:
+              type: "object"
+              title: "Empty Schema"
+        - { AuthorizerArn: !GetAtt Authorizer.Arn }
+  Deployment:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId: !Ref Gateway
+      StageName: "prod" 
+Outputs:
+  GatewayUrl:
+    Description: Url for IP Updater Gateway
+    Value: !Sub "https://${Gateway}.execute-api.${AWS::Region}.amazonaws.com/prod"

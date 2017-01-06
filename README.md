@@ -21,6 +21,14 @@ The update-ip.js is self contained and can be run from nodejs 4.3 or above.
 
 api-gw.js is meant to integrate AWS API Gateway with the update-ip module
 
+Deployment via CloudFormation
+-----------------------------
+
+The cloudformation template uses the basic auth custom authorizer (needed by
+most routers). Download/clone https://github.com/elerch/basic-auth-api-gateway
+and setup the correct directory in the cfndeploy shell script. While you're
+there, setup the proper s3 bucket.
+
 IMPORTANT
 =========
 
