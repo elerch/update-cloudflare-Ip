@@ -4,20 +4,22 @@ awsaccountnumber () {
 }
 
 if [ "x$1" = "x" ]; then
-  echo usage: $0 username password [function-name]
+  echo usage: $0 authkey authemail zoneid [function-name]
   exit 1
 fi
 
-fn_name=${3:-basic-auth-api-gateway}
+fn_name=${4:-updateip}
+environment="Variables={CF_AUTH_KEY=$1,CF_AUTH_EMAIL=$2,CF_ZONE_ID=$3}"
+handler=api-gw.handler
 acct=$(awsaccountnumber)
 
 zip package.zip *.js && \
 aws lambda create-function \
   --function-name $fn_name \
   --runtime nodejs4.3 \
-  --handler authenticate.authenticate \
+  --handler $handler \
   --zip-file fileb://package.zip \
-  --environment "Variables={AUTH_USER=$1,AUTH_PASS=$2}" \
+  --environment $environment \
   --role arn:aws:iam::$acct:role/lambda_basic_execution
 if [ $? -ne 0 ]; then
   echo error creating function. If it already exists, use
