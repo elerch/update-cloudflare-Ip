@@ -9,7 +9,7 @@ if [ "x$1" = "x" ]; then
 fi
 
 #acct=$(awsaccountnumber)
-bucket=emil
+bucket=${6:-emil}
 authorizerDirectory=../basic-auth-api-gateway
 
 zip -j updater.zip *.js && aws s3 cp updater.zip s3://$bucket
@@ -33,4 +33,5 @@ aws cloudformation create-stack \
     ParameterKey=BasicAuthPassword,ParameterValue=$2 \
     ParameterKey=CloudFlareAuthorizationEmail,ParameterValue=$3 \
     ParameterKey=CloudFlareAuthorizationKey,ParameterValue=$4 \
-    ParameterKey=CloudFlareZoneId,ParameterValue=$5
+    ParameterKey=CloudFlareZoneId,ParameterValue=$5 \
+    ParameterKey=Bucket,ParameterValue=$bucket
