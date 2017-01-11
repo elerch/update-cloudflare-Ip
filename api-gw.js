@@ -1,7 +1,9 @@
-// 'use strict';
+/* eslint-disable no-param-reassign,no-console,strict */
+
+'use strict';
+
 const updateIp = require('./update-ip.js');
 
-/* eslint-disable no-param-reassign,no-console */
 (function main(exports) {
   function clientIpFromXForwardedFor(forwardedFor) {
     return forwardedFor.match(/^[^, ]*/)[0];

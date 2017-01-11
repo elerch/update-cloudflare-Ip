@@ -1,32 +1,33 @@
+/* eslint-disable no-param-reassign,strict */
+
 'use strict';
-var https=require('https');
 
-(function(module, undefined){
-  const zoneBaseUrl='https://api.cloudflare.com/client/v4/zones/'
+const https = require('https');
 
+(function main(module) {
   function optionsForRequest(config, pathSuffix) {
     return {
       hostname: 'api.cloudflare.com',
       port: 443,
-      path: '/client/v4/zones/' + pathSuffix,
+      path: `/client/v4/zones/${pathSuffix}`,
       method: 'GET',
       headers: {
-        "Content-Type": 'application/json',
-        "X-Auth-Key": config.key,
-        "X-Auth-Email": config.email
-      }
-    }
+        'Content-Type': 'application/json',
+        'X-Auth-Key': config.key,
+        'X-Auth-Email': config.email,
+      },
+    };
   }
   function updateIpOnRecord(record, ip, config, callback) {
-    const pathSuffix = config.zoneId + '/dns_records/' + record.id;
+    const pathSuffix = `${config.zoneId}/dns_records/record.id`;
     const putData = {
       type: record.type,
       content: ip,
-      name: record.name
+      name: record.name,
     };
     const options = optionsForRequest(config, pathSuffix);
     options.method = 'PUT';
-    let req = https.request(options, (res) => {
+    const req = https.request(options, (res) => {
       const body = [];
       res.on('data', (d) => {
         body.push(d);
@@ -38,54 +39,53 @@ var https=require('https');
           return;
         }
         callback(null, { status: 'success',
-                         message: 'record updated',
-                         record: d });
-        return;
+          message: 'record updated',
+          record: d });
       });
     });
-    req.on('error', (err) => callback(err));
-    req.write(JSON.stringify(putData) + '\n');
+    req.on('error', err => callback(err));
+    req.write(`${JSON.stringify(putData)}\n`);
     req.end();
   }
 
   function updateIpForDomain(host, ip, config, domainName, callback) {
-    const pathSuffix = config.zoneId + '/dns_records?name=' + host + '.' +
-                     domainName; 
+    const pathSuffix =
+      `${config.zoneId}/dns_records?name=${host}.${domainName}`;
     https.request(optionsForRequest(config, pathSuffix), (res) => {
       let body = [];
       res.on('data', (d) => {
         body.push(d);
       });
       res.on('end', () => {
-        let record;
         body = Buffer.concat(body);
         const d = JSON.parse(body.toString());
         if (!d || !d.result || !d.result[0] ||
             !d.result[0].type || !d.result[0].content) {
-          callback('unexpected result getting dns record: ' +
-            JSON.stringify(d));
+          callback(
+            `unexpected result getting dns record: ${JSON.stringify(d)}`);
           return;
         }
-        record = d.result[0];
-        if (record.type != 'A' && record.type != 'AAAA') {
+        const record = d.result[0];
+        if (record.type !== 'A' && record.type !== 'AAAA') {
           callback('DNS record must be an A or AAAA type');
           return;
         }
-        if (record.content == ip) {
-          callback(null, { status: 'success', message: 'no update required'});
+        if (record.content === ip) {
+          callback(null, {
+            status: 'success',
+            message: 'no update required',
+          });
           return;
         }
         updateIpOnRecord(record, ip, config, callback);
-        return;
       });
     }).on('error', (e) => {
-      callback('error getting dns record for host "' + host +
-                     '": ' + e);
+      callback(`error getting dns record for host "${host}": ${e}`);
     }).end();
   }
 
   function updateIp(host, ip, callback) {
-    let config = updateIp.config;
+    const config = updateIp.config;
     https.request(optionsForRequest(config, config.zoneId), (res) => {
       let body = [];
       res.on('data', (d) => {
@@ -95,25 +95,21 @@ var https=require('https');
         body = Buffer.concat(body);
         const d = JSON.parse(body.toString());
         if (!d || !d.result || !d.result.name) {
-          callback('unexpected response from CloudFlare: ' +
-            JSON.stringify(d));
+          callback(
+            `unexpected response from CloudFlare: ${JSON.stringify(d)}`);
           return;
         }
         updateIpForDomain(host, ip, config, d.result.name, callback);
-        return;
       });
     }).on('error', (e) => {
-          callback('error getting zone info from CloudFlare: ' + e);
-          return;
+      callback(`error getting zone info from CloudFlare: ${e}`);
     }).end();
   }
 
   updateIp.config = {
     key: process.env.CF_AUTH_KEY,
     email: process.env.CF_AUTH_EMAIL,
-    zoneId: process.env.CF_ZONE_ID
+    zoneId: process.env.CF_ZONE_ID,
   };
-
   module.exports = updateIp;
-
 }(module));
