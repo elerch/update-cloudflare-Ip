@@ -3,7 +3,10 @@
 'use strict';
 
 const https = require('https');
+// TODO: Would be cool if this module could push new
+// DNS records as well as update existing ones
 
+// TODO: Handle CNAMEs
 (function main(module) {
   function optionsForRequest(config, pathSuffix) {
     return {
