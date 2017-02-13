@@ -3,7 +3,7 @@
 'use strict';
 
 const aws = require('aws-sdk');
-const updateIp = require('./update-ip.js');
+const updateIp = require('./update-dns.js');
 
 const ec2 = new aws.EC2();
 

@@ -2,7 +2,9 @@
 
 'use strict';
 
-const updateIp = require('./update-ip.js');
+const updateIp = require('./update-dns.js');
+
+updateIp.config.createRecordIfNecessary = false;
 
 (function main(exports) {
   function clientIpFromXForwardedFor(forwardedFor) {
