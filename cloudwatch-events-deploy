@@ -1,0 +1,26 @@
+#!/bin/bash
+awsaccountnumber () {
+  aws sts get-caller-identity --output text --query Account
+}
+
+if [ "x$1" = "x" ]; then
+  echo "usage: $0 authemail authkey zoneid tagkey [bucket]"
+  exit 1
+fi
+
+bucket=${5:-emil}
+
+zip=updater-cloudwatch-events.zip
+zip -j $zip *.js && aws s3 cp $zip s3://$bucket
+rm $zip
+
+aws cloudformation create-stack \
+  --stack-name ipupdater-events \
+  --template-body file://update-ip-cloudwatch-events.yaml \
+  --capabilities CAPABILITY_IAM \
+  --parameters \
+    ParameterKey=CloudFlareAuthorizationEmail,ParameterValue=$1 \
+    ParameterKey=CloudFlareAuthorizationKey,ParameterValue=$2 \
+    ParameterKey=CloudFlareZoneId,ParameterValue=$3 \
+    ParameterKey=DNSTagSearchKey,ParameterValue=$4 \
+    ParameterKey=Bucket,ParameterValue=$bucket

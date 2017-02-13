@@ -1,0 +1,94 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  Bucket:
+    Type: String
+    Default: emil
+    Description: Bucket name holding source code for lambda functions
+  UpdaterKey:
+    Type: String
+    Default: updater-cloudwatch-events.zip
+    Description: Object key for updater code
+  CloudFlareAuthorizationEmail:
+    Type: String
+    Description: Authorization email (login email address) for cloudflare
+  CloudFlareAuthorizationKey:
+    Type: String
+    Description: Authorization key for CloudFlare - find on account page
+  CloudFlareZoneId:
+    Type: String
+    Description: ZoneId for zone to control - find on domain page
+  DNSTagSearchKey:
+    Type: String
+    Description: Name of tag to be used for the dns host
+Resources:
+  CloudTrailUpdateIpExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: '/'
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      Policies:
+        -
+          PolicyName: "describeEC2"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: "Allow"
+                Action: "ec2:DescribeInstances"
+                Resource: "*"
+  IPUpdater:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: cloudwatch-events.handler
+      Runtime: nodejs4.3
+      Role: !GetAtt CloudTrailUpdateIpExecutionRole.Arn
+      Description: Lambda function to update IP addresses
+      Code:
+        S3Bucket: !Ref Bucket
+        S3Key: !Ref UpdaterKey
+      Environment:
+        Variables:
+          CF_AUTH_EMAIL: !Ref CloudFlareAuthorizationEmail
+          CF_AUTH_KEY: !Ref CloudFlareAuthorizationKey
+          CF_ZONE_ID: !Ref CloudFlareZoneId
+          DNS_TAG_SEARCH_KEY: !Ref DNSTagSearchKey
+  IPUpdaterInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt IPUpdater.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt CreateTagsEvent.Arn
+  CreateTagsEvent:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Update IP based on CreateTags call
+      EventPattern:
+        source:
+          - aws.ec2
+        detail-type: # Note that this detail type involves the cloudtrail lag
+          - AWS API Call via CloudTrail
+        detail:
+          eventSource:
+            - ec2.amazonaws.com
+          eventName:
+            - CreateTags
+      State: ENABLED
+      Targets:
+        -
+          Id: update-ip-function
+          Arn: !GetAtt IPUpdater.Arn
+#Outputs:
+#  GatewayUrl:
+#    Description: Url for IP Updater Gateway
+#    Value: !Sub "https://${Gateway}.execute-api.${AWS::Region}.amazonaws.com/prod"
