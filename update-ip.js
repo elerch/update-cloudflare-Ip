@@ -22,14 +22,14 @@ const https = require('https');
     };
   }
   function updateIpOnRecord(record, ip, config, callback) {
-    const pathSuffix = `${config.zoneId}/dns_records/record.id`;
+    const pathSuffix = `${config.zoneId}/dns_records/${record.id}`;
     const putData = {
       type: record.type,
       content: ip,
       name: record.name,
     };
     const options = optionsForRequest(config, pathSuffix);
-    options.method = 'PUT';
+    options.method = 'PUT'; // console.log(options,putData);
     const req = https.request(options, (res) => {
       const body = [];
       res.on('data', (d) => {
@@ -54,7 +54,8 @@ const https = require('https');
   function updateIpForDomain(host, ip, config, domainName, callback) {
     const pathSuffix =
       `${config.zoneId}/dns_records?name=${host}.${domainName}`;
-    https.request(optionsForRequest(config, pathSuffix), (res) => {
+    const opts = optionsForRequest(config, pathSuffix);// console.log(opts);
+    https.request(opts, (res) => {
       let body = [];
       res.on('data', (d) => {
         body.push(d);
@@ -89,7 +90,8 @@ const https = require('https');
 
   function updateIp(host, ip, callback) {
     const config = updateIp.config;
-    https.request(optionsForRequest(config, config.zoneId), (res) => {
+    const opts = optionsForRequest(config, config.zoneId); // console.log(opts);
+    https.request(opts, (res) => {
       let body = [];
       res.on('data', (d) => {
         body.push(d);
